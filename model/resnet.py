@@ -1,4 +1,5 @@
 import torch.nn as nn
+import torch.nn.functional as F
 
 class ResBlock(nn.Module):
     def __init__(self, in_channels, out_channels, stride):
@@ -11,19 +12,17 @@ class ResBlock(nn.Module):
         self.bn2 = nn.BatchNorm2d(out_channels)
         self.bn3 = nn.BatchNorm2d(out_channels)
 
-        self.relu = nn.ReLU(inplace=True)
-
     def forward(self, x):
         out = self.conv1(x)
         out = self.bn1(out)
-        out = self.relu(out)
+        out = F.relu(out)
         out = self.conv2(out)
         out = self.bn2(out)
 
         down_sampled_x = self.conv3(x)
         down_sampled_x = self.bn3(down_sampled_x)
         out += down_sampled_x
-        out = self.relu(out)
+        out = F.relu(out)
 
         return out
 
@@ -34,7 +33,6 @@ class Resnet(nn.Module):
         # input is rgb image which has 3 channels
         self.conv = nn.Conv2d(3, 64, kernel_size=7, stride=2)
         self.bn = nn.BatchNorm2d(64)
-        self.relu = nn.ReLU(inplace=True)
         self.max_pool = nn.MaxPool2d(kernel_size=3, stride=2)
         self.resblock1 = ResBlock(64, 64, 1)
         self.resblock2 = ResBlock(64, 128, 2)
@@ -42,12 +40,11 @@ class Resnet(nn.Module):
         self.resblock4 = ResBlock(256, 512, 2)
         self.global_avg_pool = nn.AdaptiveAvgPool2d((1, 1))     # make output size (1,1) means global average
         self.fc = nn.Linear(512, 2)                             # output_channel is equal to number of classification
-        self.sigmoid = nn.Sigmoid()
 
     def forward(self, x):
         x = self.conv(x)
         x = self.bn(x)
-        x = self.relu(x)
+        x = F.relu(x)
         x = self.max_pool(x)
 
         x = self.resblock1(x)
@@ -56,8 +53,8 @@ class Resnet(nn.Module):
         x = self.resblock4(x)
 
         x = self.global_avg_pool(x)             # shape should be (B,C,1,1)
-        x = x.view((x.size(0), -1))             # shape should be (B,C)
+        x = x.view((x.size(0), -1))             # faltten_layer: shape should be (B,C)
         x = self.fc(x)
-        x = self.sigmoid(x)
+        x = F.sigmoid(x)
 
         return x
