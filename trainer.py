@@ -85,7 +85,7 @@ class Trainer:
         out = self._model(x)
         loss = self._crit(out, y)
         loss = (loss * self.pos_weight_val).mean()
-        out = t.ge(out, t.tensor([0.5, 0.5]).cuda()).float()   # If out is greater than 0.5, give it corresponding label
+        out = t.ge(out, t.tensor([0, 0]).cuda()).float()   # If out is greater than 0, give it corresponding label (imagine sigmoid)
         return loss, out
 
         
@@ -105,7 +105,7 @@ class Trainer:
                 label = label.cuda()
             loss = self.train_step(img, label)      # loss type is tensor
             average_loss += loss.item() / iter_num
-        print("train loss: ", average_loss)
+        print("\nrain loss: ", average_loss)
         return average_loss
 
 
@@ -136,7 +136,7 @@ class Trainer:
 
                 label_list.append(label.cpu())
                 pred_list.append(pred.cpu())
-            print("validation loss: ", average_loss)
+            print("\nvalidation loss: ", average_loss)
             create_evaluation(label_list, pred_list, self._mode)
 
         return average_loss
@@ -146,10 +146,14 @@ class Trainer:
     
     def fit(self, epochs=-1):
         assert self._early_stopping_cb is not None or epochs > 0
-        # create a list for the train and validation losses, and create a counter for the epoch 
+        # create a list for the train and validation losses, and create a counter for the epoch
         train_loss_list = []
         validation_loss_list = []
         num_epoch = 0
+
+        # If you want to restore a checkpoint, you can set here.
+        # num_epoch = the file you want restore
+        # self.restore_checkpoint(num_epoch)
 
         while True:
             # stop by epoch number
@@ -158,6 +162,7 @@ class Trainer:
             # use the save_checkpoint function to save the model for each epoch
             # check whether early stopping should be performed using the early stopping callback and stop if so
             # return the loss lists for both training and validation
+            num_epoch += 1
 
             train_loss = self.train_epoch()
             validation_loss = self.val_test()
