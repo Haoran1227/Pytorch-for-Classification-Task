@@ -6,24 +6,32 @@ from evaluation import create_evaluation
 class Trainer:
     
     def __init__(self,               
-                 model,                # Model to be trained.
-                 crit,                 # Loss function
-                 optim = None,         # Optimiser
-                 train_dl = None,      # Training data set
-                 val_test_dl = None,   # Validation (or test) data set
-                 cuda = True,          # Whether to use the GPU
+                 model,                     # Model to be trained.
+                 crit,                      # Loss function
+                 optim = None,              # Optimiser
+                 train_dl = None,           # Training data set (dl means data loader)
+                 val_test_dl = None,        # Validation (or test) data set
+                 pos_weight_train = None,   # pos_weight against imbalance of labels in train dataset
+                 pos_weight_val = None,     # pos_weight against imbalance of labels in validation dataset
+                 cuda = True,               # Whether to use the GPU
                  early_stopping_cb = None): # The stopping criterion. 
         self._model = model
         self._crit = crit
         self._optim = optim
         self._train_dl = train_dl
         self._val_test_dl = val_test_dl
+        self.pos_weight_train = pos_weight_train
+        self.pos_weight_val = pos_weight_val
         self._cuda = cuda
         self._early_stopping_cb = early_stopping_cb
+
+        self._mode = None
         
         if cuda:
             self._model = model.cuda()
             self._crit = crit.cuda()
+            self.pos_weight_train = pos_weight_train.cuda()
+            self.pos_weight_val = pos_weight_val.cuda()
             
     def save_checkpoint(self, epoch):
         t.save({'state_dict': self._model.state_dict()}, 'checkpoints/checkpoint_{:03d}.ckp'.format(epoch))
@@ -56,7 +64,14 @@ class Trainer:
         # -compute gradient by backward propagation
         # -update weights
         # -return the loss
-        #TODO
+
+        self._optim.zero_grad()
+        out = self._model(x)
+        loss = self._crit(out, y)
+        loss = (loss * self.pos_weight_train).mean()
+        loss.backward()
+        self._optim.step()
+        return loss
         
         
     
@@ -65,7 +80,14 @@ class Trainer:
         # predict
         # propagate through the network and calculate the loss and predictions
         # return the loss and the predictions
-        #TODO
+
+        # care: you must also tell gpu tensor[0.5,0.5] by cuda()
+        out = self._model(x)
+        loss = self._crit(out, y)
+        loss = (loss * self.pos_weight_val).mean()
+        out = t.ge(out, t.tensor([0.5, 0.5]).cuda()).float()   # If out is greater than 0.5, give it corresponding label
+        return loss, out
+
         
     def train_epoch(self):
         # set training mode
@@ -73,7 +95,20 @@ class Trainer:
         # transfer the batch to "cuda()" -> the gpu if a gpu is given
         # perform a training step
         # calculate the average loss for the epoch and return it
-        #TODO
+
+        self._mode = 'train'
+        iter_num = len(self._train_dl)
+        average_loss = 0
+        for img, label in tqdm(self._train_dl):
+            if self._cuda:
+                img = img.cuda()
+                label = label.cuda()
+            loss = self.train_step(img, label)      # loss type is tensor
+            average_loss += loss.item() / iter_num
+        print("train loss: ", average_loss)
+        return average_loss
+
+
     
     def val_test(self):
         # set eval mode
@@ -84,24 +119,54 @@ class Trainer:
         # save the predictions and the labels for each batch
         # calculate the average loss and average metrics of your choice. You might want to calculate these metrics in designated functions
         # return the loss and print the calculated metrics
-        #TODO
+
+        self._mode = "val"
+        with t.no_grad():           # disable gradient computation during with sentence
+            iter_num = len(self._val_test_dl)
+            pred_list = []
+            label_list = []
+            average_loss = 0
+            for img, label in tqdm(self._val_test_dl):
+                if self._cuda:
+                    img = img.cuda()
+                    label = label.cuda()
+
+                loss, pred = self.val_test_step(img, label)
+                average_loss += loss.item() / iter_num
+
+                label_list.append(label.cpu())
+                pred_list.append(pred.cpu())
+            print("validation loss: ", average_loss)
+            create_evaluation(label_list, pred_list, self._mode)
+
+        return average_loss
+
+
         
     
     def fit(self, epochs=-1):
         assert self._early_stopping_cb is not None or epochs > 0
         # create a list for the train and validation losses, and create a counter for the epoch 
-        #TODO
-        
+        train_loss_list = []
+        validation_loss_list = []
+        num_epoch = 0
+
         while True:
-      
             # stop by epoch number
             # train for a epoch and then calculate the loss and metrics on the validation set
             # append the losses to the respective lists 
             # use the save_checkpoint function to save the model for each epoch
             # check whether early stopping should be performed using the early stopping callback and stop if so
             # return the loss lists for both training and validation
-        #TODO
-                    
-        
-        
-        
+
+            train_loss = self.train_epoch()
+            validation_loss = self.val_test()
+
+            train_loss_list.append(train_loss)
+            validation_loss_list.append(validation_loss)
+
+            self.save_checkpoint(num_epoch)
+
+            self._early_stopping_cb.step(validation_loss)
+            if self._early_stopping_cb.should_stop():
+                return train_loss_list, validation_loss_list
