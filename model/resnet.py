@@ -55,6 +55,5 @@ class Resnet(nn.Module):
         x = self.global_avg_pool(x)             # shape should be (B,C,1,1)
         x = x.view((x.size(0), -1))             # faltten_layer: shape should be (B,C)
         x = self.fc(x)
-        x = F.sigmoid(x)
 
         return x
