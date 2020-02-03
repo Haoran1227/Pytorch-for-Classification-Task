@@ -22,11 +22,9 @@ class ChallengeDataset(Dataset):
                                 random_seed to make validation dataset as complementary set of training dataset.
              transform (torchvision.transforms.Compose): defines transform methods to convert image to tensor and do resize.
         """
-        data_frame = pd.read_csv(csv_file, sep=';')  # read csv file
-        img_name = list(data_frame.iloc[:, 0])  # The first column denotes image name
-        label = np.array(data_frame.iloc[:,
-                         2:])  # read label and convert it to ndarray. '2' is because '1' is poly_wafer label, it's ignored in this project
-
+        data_frame = pd.read_csv(csv_file, sep=';')     # read csv file
+        img_name = list(data_frame.iloc[:, 0])          # The first column denotes image name
+        label = np.array(data_frame.iloc[:, 2:])   # read label and convert it to ndarray. '2' is because '1' is poly_wafer label, it's ignored in this project
         # Separate dataset into training dataset and validation dataset randomly.
         if mode == 'train':
             # img_train, img_test, label_train, label_test = train_test_split(img_name, label, test_size, random_state)
@@ -51,7 +49,7 @@ class ChallengeDataset(Dataset):
         image = self.transform(image)  # implement transform, return type of tensor
 
         # read label ('crack', 'inactive')
-        label = torch.from_numpy(self.label)  # convert ndarray to tensor
+        label = torch.from_numpy(self.label[item]).float()  # convert ndarray to tensor with float dtype
 
         # construct sample as a tuple type, it contains two tensor type elements (image and label)
         sample = (image, label)
@@ -73,7 +71,7 @@ class ChallengeDataset(Dataset):
 
 # global parameter
 csv_path = './train.csv'
-split_parameter = 10  # You can modify the split of dataset by changing this parameter
+split_parameter = 222  # You can modify the split of dataset by changing this parameter
 
 
 def get_train_dataset():
@@ -89,5 +87,5 @@ def get_validation_dataset():
     transform = tv.transforms.Compose([tv.transforms.ToPILImage(),
                                        tv.transforms.ToTensor(),
                                        tv.transforms.Normalize(mean=train_mean, std=train_std)])
-    validation_dataset = ChallengeDataset('train', csv_path, split_parameter, transform)
-    return validation_dataset
+    val_dataset = ChallengeDataset('val', csv_path, split_parameter, transform)
+    return val_dataset
