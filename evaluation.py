@@ -14,4 +14,4 @@ def create_evaluation(label_list, pred_list, mode):
         pred_array = np.array([element.numpy() for element in pred_list]).reshape(-1, 2)
         label_array = np.array([element.numpy() for element in label_list]).reshape(-1, 2)
         accuracy = f1_score(y_true=label_array, y_pred=pred_array, average='weighted')
-        print('accuracy: ', accuracy*100, '%')
+        print('\naccuracy: ', accuracy*100, '%')
