@@ -1,10 +1,11 @@
 import torch as t
 from trainer import Trainer
 import sys
-import torchvision as tv
+from model.resnet import Resnet
 
 epoch = int(sys.argv[1])
-#TODO: Enter your model here
+
+model = Resnet()
 
 crit = t.nn.BCEWithLogitsLoss()
 trainer = Trainer(model, crit)
