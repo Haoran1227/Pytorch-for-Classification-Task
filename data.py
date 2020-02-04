@@ -13,26 +13,25 @@ train_std = [0.16043035, 0.16043035, 0.16043035]
 
 
 class ChallengeDataset(Dataset):
-    def __init__(self, mode, csv_file, random_seed, transform=tv.transforms.Compose([tv.transforms.ToTensor()])):
+    def __init__(self, mode, csv_file, split_parameter, transform=tv.transforms.Compose([tv.transforms.ToTensor()])):
         """
         Args:
              mode (string): Mode flag which can be either 'val' or 'train'.
              csv_file (string): Path to the csv file.
-             random_seed (float): Parameter which controls the split between your train and validation data. Used in random_state as
-                                random_seed to make validation dataset as complementary set of training dataset.
+             split_parameter (float): 0< param < 1. Parameter which controls the ratio of validation data in all data.
              transform (torchvision.transforms.Compose): defines transform methods to convert image to tensor and do resize.
         """
-        data_frame = pd.read_csv(csv_file, sep=';')     # read csv file
-        img_name = list(data_frame.iloc[:, 0])          # The first column denotes image name
-        label = np.array(data_frame.iloc[:, 2:])   # read label and convert it to ndarray. '2' is because '1' is poly_wafer label, it's ignored in this project
+        data_frame = pd.read_csv(csv_file, sep=';')         # read csv file
+        img_name = list(data_frame.iloc[:, 0])              # The first column denotes image name
+        self.all_label = np.array(data_frame.iloc[:, 2:])   # read label and convert it to ndarray. '2' is because '1' is poly_wafer label, it's ignored in this project
         # Separate dataset into training dataset and validation dataset randomly.
         if mode == 'train':
             # img_train, img_test, label_train, label_test = train_test_split(img_name, label, test_size, random_state)
-            self.img_name, _, self.label, _ = train_test_split(img_name, label, test_size=0.25,
-                                                               random_state=random_seed)
+            self.img_name, _, self.label, _ = train_test_split(img_name, self.all_label, test_size=split_parameter,
+                                                               random_state=10)     # random_state means random seed
         if mode == 'val':
-            _, self.img_name, _, self.label = train_test_split(img_name, label, test_size=0.25,
-                                                               random_state=random_seed)
+            _, self.img_name, _, self.label = train_test_split(img_name, self.all_label, test_size=split_parameter,
+                                                               random_state=10)
 
         self.transform = transform
 
@@ -57,8 +56,8 @@ class ChallengeDataset(Dataset):
 
     def pos_weight(self):
         # read labels. "crack" and "inactive"
-        crack_label = self.label[:, 0]
-        inactive_label = self.label[:, 1]
+        crack_label = self.all_label[:, 0]
+        inactive_label = self.all_label[:, 1]
 
         # calculate the ratio of negative to positive samples
         crack_weight = np.sum(1 - crack_label) / np.sum(crack_label)
@@ -71,14 +70,14 @@ class ChallengeDataset(Dataset):
 
 # global parameter
 csv_path = './train.csv'
-split_parameter = 222  # You can modify the split of dataset by changing this parameter
+split_num = 0.25  # You can modify the split of dataset by changing this parameter
 
 
 def get_train_dataset():
     transform = tv.transforms.Compose([tv.transforms.ToPILImage(),
                                        tv.transforms.ToTensor(),
                                        tv.transforms.Normalize(mean=train_mean, std=train_std)])
-    train_dataset = ChallengeDataset('train', csv_path, split_parameter, transform)
+    train_dataset = ChallengeDataset('train', csv_path, split_num, transform)
     return train_dataset
 
 
@@ -87,5 +86,5 @@ def get_validation_dataset():
     transform = tv.transforms.Compose([tv.transforms.ToPILImage(),
                                        tv.transforms.ToTensor(),
                                        tv.transforms.Normalize(mean=train_mean, std=train_std)])
-    val_dataset = ChallengeDataset('val', csv_path, split_parameter, transform)
+    val_dataset = ChallengeDataset('val', csv_path, split_num, transform)
     return val_dataset

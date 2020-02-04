@@ -88,7 +88,7 @@ class Trainer:
         # transfer the batch to "cuda()" -> the gpu if a gpu is given
         # perform a training step
         # calculate the average loss for the epoch and return it
-
+        recorded_loss = []
         self._mode = 'train'
         iter_num = len(self._train_dl)
         average_loss = 0
@@ -97,7 +97,13 @@ class Trainer:
                 img = img.cuda()
                 label = label.cuda()
             loss = self.train_step(img, label)      # loss type is tensor
+            recorded_loss.append(loss)
             average_loss += loss.item() / iter_num
+        plt.figure()
+        plt.plot(np.arange(len(recorded_loss)), recorded_loss, label='train loss')
+        plt.yscale('log')
+        plt.legend()
+        plt.savefig('recorded_losses.png')
         print("\ntrain loss: ", average_loss)
         return average_loss
 
@@ -159,7 +165,6 @@ class Trainer:
             print('epoch_index:', num_epoch)
 
             train_loss = self.train_epoch()
-            #train_loss = 1
             validation_loss = self.val_test()
 
             train_loss_list.append(train_loss)

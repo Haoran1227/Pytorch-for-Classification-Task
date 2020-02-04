@@ -8,10 +8,10 @@ import numpy as np
 from model.resnet import Resnet
 
 #Hyperparameters
-learning_rate = 0.0001
-stop_patience = 30
-batch_size = 10
-weight_decay = 0.01
+learning_rate = 0.00001
+stop_patience = 1
+batch_size = 50
+#weight_decay = 0.01
 
 # set up data loading for the training and validation set using t.utils.data.DataLoader and the methods implemented in data.py
 train_dataset = get_train_dataset()
@@ -30,7 +30,7 @@ net = Resnet()
 # initialize the early stopping callback implemented in stopping.py and create a object of type Trainer
 #criterion = t.nn.BCELoss(weight=train_dataset.pos_weight())
 criterion = t.nn.BCEWithLogitsLoss(pos_weight=pos_weight_train)
-optimizer = t.optim.Adam(net.parameters(), lr=learning_rate, weight_decay=weight_decay)
+optimizer = t.optim.Adam(net.parameters(), lr=learning_rate)
 es_cb = EarlyStoppingCallback(patience=stop_patience)
 trainer = Trainer(net, criterion, optimizer, train_dl, val_dl, cuda=True, early_stopping_cb=es_cb)
 

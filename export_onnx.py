@@ -3,7 +3,8 @@ from trainer import Trainer
 import sys
 from model.resnet import Resnet
 
-epoch = int(sys.argv[1])
+#epoch = int(sys.argv[1])
+epoch = 4
 
 model = Resnet()
 
