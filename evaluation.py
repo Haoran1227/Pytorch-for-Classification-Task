@@ -13,5 +13,7 @@ def create_evaluation(label_list, pred_list, mode):
         # convert tensor to ndarray
         pred_array = np.array([element.numpy() for element in pred_list]).reshape(-1, 2)
         label_array = np.array([element.numpy() for element in label_list]).reshape(-1, 2)
-        accuracy = f1_score(y_true=label_array, y_pred=pred_array, average='weighted')
-        print('\naccuracy: ', accuracy*100, '%')
+        crack_accuracy = f1_score(y_true=label_array[:, 0], y_pred=pred_array[:, 0], average='weighted')
+        print('\ncrack_accuracy: ', crack_accuracy*100, '%')
+        inactive_accuracy = f1_score(y_true=label_array[:, 1], y_pred=pred_array[:, 1], average='weighted')
+        print('\ninactive_accuracy: ', inactive_accuracy*100, '%')
