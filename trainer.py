@@ -1,5 +1,6 @@
 import torch as t
-from sklearn.metrics import f1_score
+import numpy as np
+from matplotlib import pyplot as plt
 from tqdm.autonotebook import tqdm
 from evaluation import create_evaluation
 
@@ -11,8 +12,6 @@ class Trainer:
                  optim = None,              # Optimiser
                  train_dl = None,           # Training data set (dl means data loader)
                  val_test_dl = None,        # Validation (or test) data set
-                 pos_weight_train = None,   # pos_weight against imbalance of labels in train dataset
-                 pos_weight_val = None,     # pos_weight against imbalance of labels in validation dataset
                  cuda = True,               # Whether to use the GPU
                  early_stopping_cb = None): # The stopping criterion. 
         self._model = model
@@ -20,8 +19,6 @@ class Trainer:
         self._optim = optim
         self._train_dl = train_dl
         self._val_test_dl = val_test_dl
-        self.pos_weight_train = pos_weight_train
-        self.pos_weight_val = pos_weight_val
         self._cuda = cuda
         self._early_stopping_cb = early_stopping_cb
 
@@ -30,8 +27,6 @@ class Trainer:
         if cuda:
             self._model = model.cuda()
             self._crit = crit.cuda()
-            self.pos_weight_train = pos_weight_train.cuda()
-            self.pos_weight_val = pos_weight_val.cuda()
             
     def save_checkpoint(self, epoch):
         t.save({'state_dict': self._model.state_dict()}, 'checkpoints/checkpoint_{:03d}.ckp'.format(epoch))
@@ -68,7 +63,6 @@ class Trainer:
         self._optim.zero_grad()
         out = self._model(x)
         loss = self._crit(out, y)
-        loss = (loss * self.pos_weight_train).mean()
         loss.backward()
         self._optim.step()
         return loss
@@ -84,7 +78,6 @@ class Trainer:
         # care: you must also tell gpu tensor[0.5,0.5] by cuda()
         out = self._model(x)
         loss = self._crit(out, y)
-        loss = (loss * self.pos_weight_val).mean()
         out = t.ge(out, t.tensor([0, 0]).cuda()).float()   # If out is greater than 0, give it corresponding label (imagine sigmoid)
         return loss, out
 
@@ -105,7 +98,7 @@ class Trainer:
                 label = label.cuda()
             loss = self.train_step(img, label)      # loss type is tensor
             average_loss += loss.item() / iter_num
-        print("\nrain loss: ", average_loss)
+        print("\ntrain loss: ", average_loss)
         return average_loss
 
 
@@ -152,8 +145,8 @@ class Trainer:
         num_epoch = 0
 
         # If you want to restore a checkpoint, you can set here.
-        # num_epoch = the file you want restore
-        # self.restore_checkpoint(num_epoch)
+        #num_epoch = 4   #the file you want restore
+        #self.restore_checkpoint(num_epoch)
 
         while True:
             # stop by epoch number
@@ -163,8 +156,10 @@ class Trainer:
             # check whether early stopping should be performed using the early stopping callback and stop if so
             # return the loss lists for both training and validation
             num_epoch += 1
+            print('epoch_index:', num_epoch)
 
             train_loss = self.train_epoch()
+            #train_loss = 1
             validation_loss = self.val_test()
 
             train_loss_list.append(train_loss)
@@ -175,3 +170,11 @@ class Trainer:
             self._early_stopping_cb.step(validation_loss)
             if self._early_stopping_cb.should_stop():
                 return train_loss_list, validation_loss_list
+
+            if num_epoch % 5 == 0:
+                plt.figure()
+                plt.plot(np.arange(len(train_loss_list)), train_loss_list, label='train loss')
+                plt.plot(np.arange(len(validation_loss_list)), validation_loss_list, label='val loss')
+                plt.yscale('log')
+                plt.legend()
+                plt.savefig('losses' + str(num_epoch) + '.png')
