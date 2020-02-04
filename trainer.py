@@ -21,8 +21,6 @@ class Trainer:
         self._val_test_dl = val_test_dl
         self._cuda = cuda
         self._early_stopping_cb = early_stopping_cb
-
-        self._mode = None
         
         if cuda:
             self._model = model.cuda()
@@ -89,7 +87,6 @@ class Trainer:
         # perform a training step
         # calculate the average loss for the epoch and return it
         recorded_loss = []
-        self._mode = 'train'
         iter_num = len(self._train_dl)
         average_loss = 0
         for img, label in tqdm(self._train_dl):
@@ -119,7 +116,6 @@ class Trainer:
         # calculate the average loss and average metrics of your choice. You might want to calculate these metrics in designated functions
         # return the loss and print the calculated metrics
 
-        self._mode = "val"
         with t.no_grad():           # disable gradient computation during with sentence
             iter_num = len(self._val_test_dl)
             pred_list = []
@@ -136,7 +132,7 @@ class Trainer:
                 label_list.append(label.cpu())
                 pred_list.append(pred.cpu())
             print("\nvalidation loss: ", average_loss)
-            create_evaluation(label_list, pred_list, self._mode)
+            create_evaluation(label_list, pred_list)
 
         return average_loss
 
@@ -176,6 +172,7 @@ class Trainer:
             if self._early_stopping_cb.should_stop():
                 return train_loss_list, validation_loss_list
 
+            # Draw the loss curve each 5 epochs. It's convenient for observation.
             if num_epoch % 5 == 0:
                 plt.figure()
                 plt.plot(np.arange(len(train_loss_list)), train_loss_list, label='train loss')
