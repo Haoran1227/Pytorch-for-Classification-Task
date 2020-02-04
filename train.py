@@ -8,9 +8,9 @@ import numpy as np
 from model.resnet import Resnet
 
 #Hyperparameters
-learning_rate = 0.01
-stop_patience = 8
-batch_size = 8
+learning_rate = 0.0001
+stop_patience = 30
+batch_size = 10
 weight_decay = 0.01
 
 # set up data loading for the training and validation set using t.utils.data.DataLoader and the methods implemented in data.py
@@ -38,6 +38,7 @@ trainer = Trainer(net, criterion, optimizer, train_dl, val_dl, cuda=True, early_
 res = trainer.fit()
 
 # plot the results
+plt.figure()
 plt.plot(np.arange(len(res[0])), res[0], label='train loss')
 plt.plot(np.arange(len(res[1])), res[1], label='val loss')
 plt.yscale('log')
